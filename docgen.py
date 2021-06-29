@@ -13,8 +13,6 @@ def show_info(functionNode, indent=False):
     if indent:
         stub += '#'
     name = functionNode.name
-    #if re.search(r'(init|repr|str)', name):
-    #    name = '__' + name + '__'
     stub += f' def `{name}('
     args = [arg.arg for arg in functionNode.args.args]
     stub += ', '.join(args)
