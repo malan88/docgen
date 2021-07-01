@@ -33,7 +33,9 @@ def format_docstring(docstring):
     - docstring -str: the dosctring to be formatted.
     """
     if isinstance(docstring, str):
-        return re.sub(r'^#+ ', '####', docstring)
+        result = re.sub(r'^#+ ?', '#### ', docstring, flags=re.MULTILINE)
+        print("RESULT", result, file=sys.stderr)
+        return result
     return None
 
 
@@ -44,7 +46,7 @@ def class_stub(class_node):
     - class_node -ClassDef: the class node from which to generate the stub.
     """
     stub = '`class ' + class_node.name
-    bases = [n.id for n in class_node.bases]
+    bases = [getattr(n, 'id', 'unnamed') for n in class_node.bases]
     if bases:
         stub += '(' + ', '.join(bases) + ')'
     stub += '`:'
@@ -72,7 +74,6 @@ def print_func(func_node, indent=False):
     - func_node -: the function to be printed
     - indent -bool(False): if True, prints '##' before the stub, else '#'
     """
-    print(type(func_node))
     if indent:
         stub = '# ' + func_stub(func_node)
     else:
