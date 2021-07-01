@@ -1,4 +1,4 @@
-# docgen.py
+# watdoc.py
 
 This simple script generates markdown files with function and class stubs as
 headers and the docstring as descriptions to every function, or class in every
