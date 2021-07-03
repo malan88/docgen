@@ -35,9 +35,8 @@ def format_docstring(docstring):
     """
     if isinstance(docstring, str):
         result = re.sub(r'^#+ ?', '#### ', docstring, flags=re.MULTILINE)
-        print("RESULT", result, file=sys.stderr)
         return result
-    return None
+    return ''
 
 
 def class_stub(class_node):
@@ -68,27 +67,51 @@ def func_stub(func_node):
     return stub
 
 
-def parse_func(func, indents=1):
+def parse_func(func, indents=2):
     """Prints a function stub and it's docstring.
 
     # args
     - func_node -: the function to be printed
     - indent -int: the number of # to indent by
+
+    @TODO: test todos
     """
     stub = '#' * indents + func_stub(func)
-    doc = format_docstring(ast.get_docstring(func))
-    docdict = {'doc': stub + '\n' + doc}
+    rawdoc = format_docstring(ast.get_docstring(func)).splitlines()
+    todos = []
+    doc = []
+    for line in rawdoc:
+        if '@todo' in line.lower():
+            todos.append((func.lineno, line))
+        else:
+            doc.append(line)
+    doc = stub + '\n' + '\n'.join(doc)
+    docdict = {'doc': doc, 'todos': todos}
     return docdict
 
 
 def parse_class(cls):
-    fulldoc = []
-    fulldoc.append(class_stub(cls))
-    fulldoc.append(format_docstring(ast.get_docstring(cls)))
+    """Parses a class definition and all methods"""
+    title = class_stub(cls)
+    rawdoc = format_docstring(ast.get_docstring(cls)).splitlines()
+    todos = []
+    clsdoc = []
+    for line in rawdoc:
+        if '@todo' in line.lower():
+            todos.append((cls.lineno, line))
+        else:
+            clsdoc.append(line)
     methods = [n for n in cls.body if isinstance(n, ast.FunctionDef)]
+    methoddocs = []
     for method in methods:
-        methdoc = parse_func(method)
-        fulldoc.append(parse_func(method))
+        methoddoc = parse_func(method)
+        if '@prop' in methoddoc['doc'].lower():
+            clsdoc.append(methoddoc['doc'].replace('@prop', '').strip())
+        else:
+            methoddocs.append(methoddoc['doc'])
+        todos.extend(methoddoc['todos'])
+    doc = '\n'.join([title, '\n'.join(clsdoc), '\n'.join(methoddocs)])
+    return {'doc': doc, 'todos': todos}
 
 
 def gendoc(f):
@@ -97,23 +120,44 @@ def gendoc(f):
     # args
     - f -str: a filename
     """
+    f = f.strip('./')
     with open(f) as file:
         node = ast.parse(file.read())
     fstub = f'# `{f}`'
-    fdoc = format_docstring(ast.get_docstring(node))
+    rawdoc = format_docstring(ast.get_docstring(node)).splitlines()
+
+    todos = []
+    fdoc = []
+    for line in rawdoc:
+        if '@todo' in line.lower():
+            todos.append((f, 0, line))
+        else:
+            fdoc.append(line)
 
     functions = [n for n in node.body if isinstance(n, ast.FunctionDef)]
     classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
+    rawtodos = []
 
     funcdocs = []
     for function in functions:
-        funcdoc = parse_function(function)
+        funcdoc = parse_func(function)
         funcdocs.append(funcdoc['doc'])
+        rawtodos.extend(funcdoc['todos'])
 
     classdocs = []
-    for _class in classes:
-        classdoc = parse_class(_class)
+    for cls in classes:
+        classdoc = parse_class(cls)
         classdocs.append(classdoc['doc'])
+        rawtodos.extend(classdoc['todos'])
+
+    rawtodos = [(f, *todo) for todo in rawtodos]
+    todos.extend(rawtodos)
+    finaltodos = []
+    for todo in todos:
+        finaltodos.append('- [ ] ' + str(todo))
+
+    fulldocs = '\n\n'.join([fstub, *fdoc, *finaltodos, *funcdocs, *classdocs])
+    return fulldocs
 
 
 def main(files):
@@ -125,7 +169,7 @@ def main(files):
     docs = {}
     for f in files:
         docs[f] = gendoc(f)
-    for k,v in docs.items():
+    for k, v in docs.items():
         print(v)
 
 
