@@ -25,6 +25,7 @@ import ast
 import sys
 import re
 
+
 def format_docstring(docstring):
     """Formats a docstring. Any leading # will be converted to #### for
     formatting consistency.
@@ -67,20 +68,28 @@ def func_stub(func_node):
     return stub
 
 
-def print_func(func_node, indent=False):
+def parse_func(func, indents=1):
     """Prints a function stub and it's docstring.
 
     # args
     - func_node -: the function to be printed
-    - indent -bool(False): if True, prints '##' before the stub, else '#'
+    - indent -int: the number of # to indent by
     """
-    if indent:
-        stub = '# ' + func_stub(func_node)
-    else:
-        stub = '## ' + func_stub(func_node)
-    print(stub)
-    print(format_docstring(ast.get_docstring(func_node)))
-    print()
+    stub = '#' * indents + func_stub(func)
+    doc = format_docstring(ast.get_docstring(func))
+    docdict = {'doc': stub + '\n' + doc}
+    return docdict
+
+
+def parse_class(cls):
+    fulldoc = []
+    fulldoc.append(class_stub(cls))
+    fulldoc.append(format_docstring(ast.get_docstring(cls)))
+    methods = [n for n in cls.body if isinstance(n, ast.FunctionDef)]
+    for method in methods:
+        methdoc = parse_func(method)
+        fulldoc.append(parse_func(method))
+
 
 def gendoc(f):
     """Generates the docs from a file.
@@ -90,26 +99,22 @@ def gendoc(f):
     """
     with open(f) as file:
         node = ast.parse(file.read())
-
-    print(f'# `{f}`')
-    print(format_docstring(ast.get_docstring(node)))
-    print()
+    fstub = f'# `{f}`'
+    fdoc = format_docstring(ast.get_docstring(node))
 
     functions = [n for n in node.body if isinstance(n, ast.FunctionDef)]
     classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
 
+    funcdocs = []
     for function in functions:
-        print_func(function)
+        funcdoc = parse_function(function)
+        funcdocs.append(funcdoc['doc'])
 
-    for class_ in classes:
-        stub = '## ' + class_stub(class_)
-        print(stub)
-        print(format_docstring(ast.get_docstring(class_)))
-        print('\n')
-        methods = [n for n in class_.body if isinstance(n, ast.FunctionDef)]
-        for method in methods:
-            print_func(method, True)
-        print('***')
+    classdocs = []
+    for _class in classes:
+        classdoc = parse_class(_class)
+        classdocs.append(classdoc['doc'])
+
 
 def main(files):
     """Main entrypoint for the file,
@@ -117,8 +122,12 @@ def main(files):
     # args
     - files -list[str]: a list of file names to parse
     """
-    for file in files:
-        gendoc(file)
+    docs = {}
+    for f in files:
+        docs[f] = gendoc(f)
+    for k,v in docs.items():
+        print(v)
+
 
 if __name__ == "__main__":
     args = sys.argv
