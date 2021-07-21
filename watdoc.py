@@ -25,6 +25,7 @@ import ast
 import sys
 import re
 
+
 def format_docstring(docstring):
     """Formats a docstring. Any leading # will be converted to #### for
     formatting consistency.
@@ -34,7 +35,6 @@ def format_docstring(docstring):
     """
     if isinstance(docstring, str):
         result = re.sub(r'^#+ ?', '#### ', docstring, flags=re.MULTILINE)
-        print("RESULT", result, file=sys.stderr)
         return result
     return None
 
@@ -82,6 +82,7 @@ def print_func(func_node, indent=False):
     print(format_docstring(ast.get_docstring(func_node)))
     print()
 
+
 def gendoc(f):
     """Generates the docs from a file.
 
@@ -111,6 +112,7 @@ def gendoc(f):
             print_func(method, True)
         print('***')
 
+
 def main(files):
     """Main entrypoint for the file,
 
@@ -119,6 +121,7 @@ def main(files):
     """
     for file in files:
         gendoc(file)
+
 
 if __name__ == "__main__":
     args = sys.argv
